@@ -1,0 +1,8 @@
+POST http://localhost:3001/api/kittys/
+content-type: application/json
+
+{
+    "quote": "A pretty cat",
+    "image": "https://cdn2.thecatapi.com/images/394.jpg",
+    "hour": 6
+}
