@@ -1,20 +1,8 @@
 const mongoose = require('mongoose');
-
-mongoose.set('strictQuery', false);
-
-const url = process.env.MONGODB_URI
-
-console.log('connecting to', url)
-mongoose.connect(url)
-    .then(result => {
-        console.log('connected to MongoDB')
-    })
-    .catch(error => {
-        console.log('error connecting to MongoDB: ', error.message)
-    })
+const {optimizedUrl} = require('../utils/cloudinary')
 
 const kittySchema = new mongoose.Schema({
-        image: String,
+        image_id: String,
         quote: {type:String, default:""},
         hour: {type: Date, default: Date.now}
       })
@@ -22,6 +10,7 @@ const kittySchema = new mongoose.Schema({
 kittySchema.set('toJSON', {
         transform: (document, returnedObject) => {
             returnedObject.id = returnedObject._id.toString()
+            returnedObject.optimizedUrl = optimizedUrl(returnedObject.image_id)
             delete returnedObject._id
             delete returnedObject.__v
         }
