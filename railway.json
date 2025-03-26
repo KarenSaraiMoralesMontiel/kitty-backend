@@ -1,0 +1,12 @@
+{
+    "builds": [
+      { "src": "package.json", "use": "@railway/node" }
+    ],
+    "deploy": {
+      "startCommand": "node index.js",
+      "ports": {
+        "type": "web",
+        "value": 3001 
+      }
+    }
+  }
