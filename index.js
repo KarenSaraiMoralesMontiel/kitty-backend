@@ -20,7 +20,11 @@ const app = express()
 
 // 1. Middleware order matters!
 app.use(express.json()) // Must come before Morgan
-app.use(cors({origin: '*'}))
+app.use(cors({
+  origin: "https://first-react-production.up.railway.app/",
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  credentials: true // Si usas cookies/autorización
+}));
 
 // 2. Minimal one-line Morgan setup
 morgan.token('body', (req) => req.body && Object.keys(req.body).length ? JSON.stringify(req.body) : '-')
