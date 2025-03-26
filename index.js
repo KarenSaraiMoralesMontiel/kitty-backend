@@ -7,7 +7,7 @@ const Kitty = require('./models/kitty')
 const ApiKey = require('./models/apiKey')
 const db = require('./models/db')
 
-const { uploadPhoto, optimizedUrl, deletePhoto } = require('./utils/cloudinary') // Adjust path as needed
+const { uploadPhoto, deletePhoto } = require('./utils/cloudinary') // Adjust path as needed
 const { generateApiKey } = require('./utils/generateApiKeys')
 const checkPermissions = require('./utils/checkPermissions')
 
@@ -23,7 +23,7 @@ app.use(express.json()) // Must come before Morgan
 app.options("*", (req, res) => {
   res.header("Access-Control-Allow-Origin", "https://first-react-production.up.railway.app");
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key");
   res.header("Access-Control-Allow-Credentials", "true");
   res.sendStatus(200)
 })
