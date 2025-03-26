@@ -20,12 +20,20 @@ const app = express()
 
 // 1. Middleware order matters!
 app.use(express.json()) // Must come before Morgan
-app.use(cors({
-  origin: "https://first-react-production.up.railway.app/",
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  credentials: true // Si usas cookies/autorización
-}));
+app.options("*", (req, res) => {
+  res.header("Access-Control-Allow-Origin", "https://first-react-production.up.railway.app");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.sendStatus(200)
+})
 
+app.use(cors({
+  origin: "https://first-react-production.up.railway.app",  // SOLO permite tu frontend
+  methods: ["GET", "POST", "PUT", "DELETE"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+  credentials: true  // Necesario si usas autenticación con cookies o headers
+}));
 // 2. Minimal one-line Morgan setup
 morgan.token('body', (req) => req.body && Object.keys(req.body).length ? JSON.stringify(req.body) : '-')
 app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'))
@@ -195,6 +203,6 @@ app.use(unknownEndPoint)
 PORT = process.env.PORT
 
 // Listen on ALL network interfaces (IPv4 + IPv6)
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`Server running on http://0.0.0.0:${PORT} (IPv4)`);
+app.listen(PORT,  () => {
+  console.log(`Server running on ${PORT} (IPv4)`);
 })
