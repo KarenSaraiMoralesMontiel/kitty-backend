@@ -1,4 +1,6 @@
 const cloudinary = require("cloudinary").v2
+const Kitty = require('../models/kitty')
+const mongoose = require('mongoose')
 
 const CLOUDINARY_NAME = process.env.CLOUDINARY_NAME
 const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY
@@ -26,6 +28,7 @@ const uploadPhoto = async (filePath, publicId, folder = "kitty_images") => {
     // Remove file extension from publicId
     const filenameWithoutExtension = publicId.replace(/\.[^/.]+$/, "") // Removes .jpeg, .png, etc.
     const fullPublicId = `${filenameWithoutExtension.replace(/\//g, '_')}`
+    console.log(filePath)
     
     const result = await cloudinary.uploader.upload(filePath, {
         public_id: fullPublicId, // No extension
@@ -50,9 +53,33 @@ const deletePhoto = async (publicId) => {
   }
 }
 
+// Add this new function to your existing middleware
+const uploadPhotosBulk = async (files, folder='kitty_images') => {
+  const results = await Promise.all(
+    files.map(file => {
+      const prefix = files.length === 1 ? '' : 'bulk_';
+      const filenameWithoutExtension = file.filename.replace(/\.[^/.]+$/, "");
+      const publicId = `${prefix}${filenameWithoutExtension.replace(/\//g, '_')}`;
+      
+      return cloudinary.uploader.upload(file.photo_url, {
+        public_id: publicId,
+        overwrite: false,
+        resource_type: 'auto',
+        folder: folder
+      });
+    })
+  );
+
+  return {
+    public_ids: results.map(r => r.public_id),
+    results // Full Cloudinary responses
+  };
+};
+
 module.exports = {
   optimizedUrl,
   uploadPhoto,
   deletePhoto,
-  cloudinary // Expose direct access if needed
-}
+  uploadPhotosBulk, // Add this
+  cloudinary
+};

@@ -1,13 +1,14 @@
 require('dotenv').config()
 const express =  require("express")
 const morgan = require("morgan")
+const mongoose = require("mongoose")
 const cors = require("cors")
 
 const Kitty = require('./models/kitty')
 const ApiKey = require('./models/apiKey')
 const db = require('./models/db')
 
-const { uploadPhoto, deletePhoto } = require('./utils/cloudinary') // Adjust path as needed
+const { uploadPhotosBulk , uploadPhoto, deletePhoto } = require('./utils/cloudinary') // Adjust path as needed
 const { generateApiKey } = require('./utils/generateApiKeys')
 const checkPermissions = require('./utils/checkPermissions')
 
@@ -18,26 +19,30 @@ const upload = multer({ dest: 'uploads/' })
 
 const app = express()
 
-// 1. Middleware order matters!
-app.use(express.json()) // Must come before Morgan
-app.options("*", (req, res) => {
-  res.header("Access-Control-Allow-Origin", "https://first-react-production.up.railway.app");
+
+const allowedOrigins = [
+  "https://first-react-production.up.railway.app",
+  "http://localhost:3000"
+];
+
+// 1. CORS Middleware (should be FIRST)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key");
   res.header("Access-Control-Allow-Credentials", "true");
-  res.sendStatus(200)
-})
+  next();
+});
 
-app.use(cors({
-  origin: "https://first-react-production.up.railway.app",  // SOLO permite tu frontend
-  methods: ["GET", "POST", "PUT", "DELETE"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  credentials: true  // Necesario si usas autenticación con cookies o headers
-}));
-// 2. Minimal one-line Morgan setup
-morgan.token('body', (req) => req.body && Object.keys(req.body).length ? JSON.stringify(req.body) : '-')
-app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'))
+// 2. Special OPTIONS handler
+app.options("*", (req, res) => res.sendStatus(200));
 
+// 3. Other middleware (AFTER CORS)
+app.use(express.json());
+app.use(morgan("dev"));
 
 //POSTS METHODS
 
@@ -127,53 +132,45 @@ app.post("/api/register",  checkPermissions('canManageKeys'), async (request, re
 })
 //Post a kitty to mongodb database
 //upload telegram
-app.post("/api/kittys", checkPermissions('canUpload'), async (request, response) => {
-    const body = request.body
 
-    if (!body.image_id || !body.hour) {
-        return response.status(400).json({ 
-            error: 'image or hour missing' 
-          })
-    } 
-    
-    const kitty = new Kitty ({
-            "quote" : body.quote || "A cutie!",
-            "image_id" : body.image_id,
-            "hour" : body.hour || new Date.now()
-        })
-    
-    kitty.save().then(savedKitty => {
-        response.json(savedKitty)
-    })
-})
+// Atomic bulk upload endpoint
+app.post('/api/kittys/images', checkPermissions('canUpload'), upload.none(), async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-//telegram, admin
-app.post('/api/kittys/images', checkPermissions('canUpload'),upload.array('photos'), async (request, response) => {
   try {
-    const files = request.body.photos // Array of { photo_url, filename }
+    // 1. Upload all photos
+    const { public_ids, results } = await uploadPhotosBulk(req.body.photos);
 
-    const results = await Promise.all(
-      files.map(file => {
-        const prefix = files.length === 1 ? '' : 'bulk_'
-        return uploadPhoto(file.photo_url,`${prefix}${file.filename}` ) 
-      })
-    )
-    // Extract `public_ids` from Cloudinary's response
-    const public_ids = results.map(result => result.public_id)
+    // 2. Create database entries
+    const kitties = public_ids.map((public_id, index) => ({
+      image_id: public_id,
+      quote: req.body.photos[index]?.caption || "A cutie!",
+      hour: new Date()
+    }));
 
+    await Kitty.insertMany(kitties, { session });
 
-    response.json({ 
-      success: true,
-      public_ids // Return ACTUAL Cloudinary public_ids
-    })
+    // 3. Commit if successful
+    await session.commitTransaction();
+    res.json({ success: true, public_ids });
+
   } catch (error) {
-    console.error('[Upload Error]', error)
-    response.status(500).json({ 
+    // 4. Rollback on failure
+    await session.abortTransaction();
+    
+    // 5. Cleanup uploaded files (if any)
+    
+
+    console.error('[Bulk Upload Failed]', error);
+    res.status(500).json({ 
       success: false,
       error: error.message 
-    })
+    });
+  } finally {
+    session.endSession();
   }
-})
+});
 
 //Delete a kitty
 //admin
