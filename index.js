@@ -189,5 +189,7 @@ const unknownEndPoint = (request, response) => {
 
 app.use(unknownEndPoint)
 PORT = process.env.PORT
-app.listen(PORT)
-console.log(`Server running on port ${PORT}`)
+
+app.listen(PORT, '::', () => {
+  console.log(`Server listening on [::]${PORT}`);
+})
