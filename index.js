@@ -20,10 +20,7 @@ const upload = multer({ dest: 'uploads/' })
 const app = express()
 
 
-const allowedOrigins = [
-  "https://first-react-production.up.railway.app",
-  "http://localhost:3000"
-];
+const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 // 1. CORS Middleware (should be FIRST)
 app.use((req, res, next) => {
