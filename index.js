@@ -197,9 +197,4 @@ PORT = process.env.PORT
 // Listen on ALL network interfaces (IPv4 + IPv6)
 app.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on http://0.0.0.0:${PORT} (IPv4)`);
-});
-
-// Optional: Dual-stack IPv6 support (if needed)
-app.listen(PORT, "::", () => {
-  console.log(`Server running on http://[::]:${PORT} (IPv6)`);
-});
+})
